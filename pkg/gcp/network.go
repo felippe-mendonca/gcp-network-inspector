@@ -89,7 +89,6 @@ func ListSubnetworks(ctx context.Context, network *computepb.Network) ([]*comput
 
 	var wg sync.WaitGroup
 	errChannel := make(chan error)
-	doneChannel := make(chan bool)
 
 	for _, s := range network.GetSubnetworks() {
 		wg.Add(1)
@@ -114,13 +113,13 @@ func ListSubnetworks(ctx context.Context, network *computepb.Network) ([]*comput
 
 	go func() {
 		wg.Wait()
-		doneChannel <- true
+		errChannel <- nil
 	}()
 
-	select {
-	case <-doneChannel:
-		return subnetworks.Items, err
-	case err = <-errChannel:
+	err = <-errChannel
+	if err != nil {
 		return []*computepb.Subnetwork{}, err
 	}
+
+	return subnetworks.Items, err
 }
