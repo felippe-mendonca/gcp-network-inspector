@@ -44,6 +44,17 @@ func (sc *SubnetworkClient) GetSubnetwork(subnet string) (subnetPb *computepb.Su
 	return subnetPb, err
 }
 
+type Subnetworks struct {
+	Items []*computepb.Subnetwork
+	mutex sync.Mutex
+}
+
+func (ss *Subnetworks) Append(s *computepb.Subnetwork) {
+	ss.mutex.Lock()
+	defer ss.mutex.Unlock()
+	ss.Items = append(ss.Items, s)
+}
+
 func GetNetwork(ctx context.Context, networkName, projectName string) (*computepb.Network, error) {
 	networkClient, err := compute.NewNetworksRESTClient(ctx)
 	if err != nil {
@@ -64,18 +75,19 @@ func GetNetwork(ctx context.Context, networkName, projectName string) (*computep
 	return net, nil
 }
 
-func ListSubnetworks(ctx context.Context, network *computepb.Network) (subnetworks []*computepb.Subnetwork, err error) {
+func ListSubnetworks(ctx context.Context, network *computepb.Network) ([]*computepb.Subnetwork, error) {
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	client, err := NewSubnetworkClient(ctx)
 	if err != nil {
-		return subnetworks, err
+		return []*computepb.Subnetwork{}, err
 	}
 
+	subnetworks := Subnetworks{}
+
 	var wg sync.WaitGroup
-	var mutex sync.Mutex
 	errChannel := make(chan error)
 	doneChannel := make(chan bool)
 
@@ -96,9 +108,7 @@ func ListSubnetworks(ctx context.Context, network *computepb.Network) (subnetwor
 				return
 			}
 
-			mutex.Lock()
-			defer mutex.Unlock()
-			subnetworks = append(subnetworks, ss)
+			subnetworks.Append(ss)
 		}(s)
 	}
 
@@ -109,7 +119,7 @@ func ListSubnetworks(ctx context.Context, network *computepb.Network) (subnetwor
 
 	select {
 	case <-doneChannel:
-		return subnetworks, err
+		return subnetworks.Items, err
 	case err = <-errChannel:
 		return []*computepb.Subnetwork{}, err
 	}
