@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"gcp-network-inspector/pkg/gcp"
+	"gcp-network-inspector/pkg/network"
 )
 
 func main() {
@@ -15,6 +16,11 @@ func main() {
 	ctx := context.Background()
 
 	gcpNetwork, err := gcp.GetNetwork(ctx, network_name, project_name)
+	if err != nil {
+		panic(err)
+	}
+
+	_, networkCidr, err := net.ParseCIDR("10.0.0.0/8")
 	if err != nil {
 		panic(err)
 	}
@@ -34,4 +40,11 @@ func main() {
 	for _, s := range subnetworks {
 		fmt.Println(s)
 	}
+
+	fmt.Println("-----------------")
+	availableSubnetworks, _ := network.FindAvailableSubnetworks(subnetworks, networkCidr)
+	for _, s := range availableSubnetworks {
+		fmt.Println(s)
+	}
+
 }

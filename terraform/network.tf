@@ -1,4 +1,5 @@
 locals {
+  // https://www.davidc.net/sites/default/subnets/subnets.html?network=10.0.0.0&mask=8&division=29.b2f05550
   subnetworks = [
     {
       name : "subnet-01",
