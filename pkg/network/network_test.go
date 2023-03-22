@@ -122,6 +122,30 @@ func Test_FindAvailableSubnetworks(t *testing.T) {
 			AvailableSubNets: Subnetworks{},
 			Err:              fmt.Errorf("%s overlaps with %s", "10.64.0.0/11", "10.64.0.0/10"),
 		},
+		{
+			Description: "Multiple available subnetworks in sequence",
+			Network:     &net.IPNet{IP: net.ParseIP("10.0.0.0").To4(), Mask: net.CIDRMask(8, IPv4maskSize)},
+			SubNets: Subnetworks{
+				&net.IPNet{IP: net.ParseIP("10.64.0.0").To4(), Mask: net.CIDRMask(11, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.112.0.0").To4(), Mask: net.CIDRMask(12, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.136.0.0").To4(), Mask: net.CIDRMask(13, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.160.0.0").To4(), Mask: net.CIDRMask(11, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.192.0.0").To4(), Mask: net.CIDRMask(11, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.248.0.0").To4(), Mask: net.CIDRMask(14, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.252.0.0").To4(), Mask: net.CIDRMask(15, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.255.0.0").To4(), Mask: net.CIDRMask(16, IPv4maskSize)},
+			},
+			AvailableSubNets: Subnetworks{
+				&net.IPNet{IP: net.ParseIP("10.0.0.0").To4(), Mask: net.CIDRMask(10, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.96.0.0").To4(), Mask: net.CIDRMask(12, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.128.0.0").To4(), Mask: net.CIDRMask(13, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.144.0.0").To4(), Mask: net.CIDRMask(12, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.224.0.0").To4(), Mask: net.CIDRMask(12, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.240.0.0").To4(), Mask: net.CIDRMask(13, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.254.0.0").To4(), Mask: net.CIDRMask(16, IPv4maskSize)},
+			},
+			Err: nil,
+		},
 	}
 
 	for _, test := range tests {

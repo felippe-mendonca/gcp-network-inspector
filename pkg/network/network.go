@@ -57,6 +57,12 @@ func findSubnetwork(begin net.IP, hosts int) (subnet *net.IPNet, leftHosts int) 
 	return subnet, leftHosts
 }
 
+func nextSubnetworkBegin(subnet *net.IPNet) net.IP {
+	_, begin := cidr.AddressRange(subnet)
+	begin = cidr.Inc(begin)
+	return begin
+}
+
 func FindAvailableSubnetworks(subnetworks Subnetworks, network *net.IPNet) (availableSubNets Subnetworks, err error) {
 
 	subnetworks = onlySubnetworks(subnetworks, network)
@@ -75,17 +81,16 @@ func FindAvailableSubnetworks(subnetworks Subnetworks, network *net.IPNet) (avai
 	begin := network.IP
 	for _, subnet := range subnetworks {
 		end := subnet.IP
-
 		hostsAvailable := hostsInRange(begin, end)
 
 		for hostsAvailable > 0 {
 			s, leftHosts := findSubnetwork(begin, hostsAvailable)
 			availableSubNets = append(availableSubNets, s)
+			begin = nextSubnetworkBegin(s)
 			hostsAvailable = leftHosts
 		}
 
-		_, begin = cidr.AddressRange(subnet)
-		begin = cidr.Inc(begin)
+		begin = nextSubnetworkBegin(subnet)
 	}
 
 	return availableSubNets, err
