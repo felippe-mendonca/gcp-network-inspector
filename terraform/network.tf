@@ -1,44 +1,40 @@
 locals {
   // https://www.davidc.net/sites/default/subnets/subnets.html?network=10.0.0.0&mask=8&division=29.b2f05550
+
   subnetworks = [
     {
       name : "subnet-01",
-      cidr : "10.64.0.0/11",
+      cidr : "10.0.0.0/10",
       secondary_ip_range : [
         {
           name : "range-01",
-          cidr : "10.112.0.0/12",
+          cidr : "10.96.0.0/12",
         }
       ]
     },
     {
       name : "subnet-02",
-      cidr : "10.136.0.0/13",
+      cidr : "10.128.0.0/13",
       secondary_ip_range : []
     },
     {
       name : "subnet-03",
-      cidr : "10.160.0.0/11",
+      cidr : "10.144.0.0/12",
       secondary_ip_range : [
         {
           name : "range-01",
-          cidr : "10.192.0.0/11",
+          cidr : "10.224.0.0/12",
         }
       ]
     },
     {
       name : "subnet-05",
-      cidr : "10.248.0.0/14",
+      cidr : "10.240.0.0/13",
       secondary_ip_range : []
     },
     {
       name : "subnet-06",
-      cidr : "10.252.0.0/15",
-      secondary_ip_range : []
-    },
-    {
-      name : "subnet-07",
-      cidr : "10.255.0.0/16",
+      cidr : "10.254.0.0/16",
       secondary_ip_range : []
     },
   ]

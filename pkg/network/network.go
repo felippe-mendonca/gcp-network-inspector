@@ -1,6 +1,7 @@
 package network
 
 import (
+	"fmt"
 	"math"
 	"net"
 	"sort"
@@ -19,6 +20,16 @@ func ipToInt(ip net.IP) (val int) {
 		val += octet_base * int(octet)
 	}
 	return val
+}
+
+func intToIp(val int) net.IP {
+	octet_base := 0x00000001
+	octets := make([]byte, 4)
+	for i, _ := range octets {
+		octets[i] = byte(val % (octet_base << 8) / octet_base)
+		octet_base <<= 8
+	}
+	return net.IPv4(octets[3], octets[2], octets[1], octets[0]).To4()
 }
 
 type Subnetworks []*net.IPNet
@@ -47,12 +58,30 @@ func onlySubnetworks(subnetworks Subnetworks, network *net.IPNet) (output Subnet
 	return output
 }
 
+func findIPMaxMask(ip net.IP) int {
+	ip = ip.To4()
+	ipBinary := fmt.Sprintf("%08b%08b%08b%08b", ip[0], ip[1], ip[2], ip[3])
+	maxMask := 32
+	for i := len(ipBinary) - 1; i >= 0; i-- {
+		if ipBinary[i] == '0' {
+			maxMask--
+			continue
+		}
+		break
+	}
+	return maxMask
+}
+
 func findSubnetwork(begin net.IP, hosts int) (subnet *net.IPNet, leftHosts int) {
 	exp := int(math.Floor(math.Log2(float64(hosts))))
 	netbits := IPv4maskSize - exp
+	maxNetbits := findIPMaxMask(begin)
+	if netbits < maxNetbits {
+		netbits = maxNetbits
+	}
 	mask := net.CIDRMask(netbits, IPv4maskSize)
 	subnet = &net.IPNet{IP: begin, Mask: mask}
-	networkHosts := int(math.Pow(2, float64(exp)))
+	networkHosts := int(math.Pow(2, float64(IPv4maskSize-netbits)))
 	leftHosts = hosts - networkHosts
 	return subnet, leftHosts
 }
@@ -77,6 +106,10 @@ func FindAvailableSubnetworks(subnetworks Subnetworks, network *net.IPNet) (avai
 	}
 
 	sort.Sort(subnetworks)
+	// Adds a fake network on the list to cover cases which
+	// last subnetwork doesn't end with network
+	lastSubnetIP := nextSubnetworkBegin(network)
+	subnetworks = append(subnetworks, &net.IPNet{IP: lastSubnetIP, Mask: net.CIDRMask(32, IPv4maskSize)})
 
 	begin := network.IP
 	for _, subnet := range subnetworks {

@@ -8,30 +8,68 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_ipToInt(t *testing.T) {
-	tests := []struct {
-		IP    net.IP
-		IPInt int
-	}{
-		{
-			IP:    net.ParseIP("10.10.10.10").To4(),
-			IPInt: 168430090,
-		},
-		{
-			IP:    net.ParseIP("1.2.3.4").To4(),
-			IPInt: 16909060,
-		},
-		{
-			IP:    net.ParseIP("0.0.0.0").To4(),
-			IPInt: 0,
-		},
-	}
+var ipIntConversion = [...]struct {
+	IP    net.IP
+	IPInt int
+}{
+	{
+		IP:    net.ParseIP("10.10.10.10").To4(),
+		IPInt: 168430090,
+	},
+	{
+		IP:    net.ParseIP("1.2.3.4").To4(),
+		IPInt: 16909060,
+	},
+	{
+		IP:    net.ParseIP("0.0.0.0").To4(),
+		IPInt: 0,
+	},
+}
 
-	for _, test := range tests {
+func Test_ipToInt(t *testing.T) {
+	for _, test := range ipIntConversion {
 		assert := assert.New(t)
 		ipInt := ipToInt(test.IP)
 		assert.Equal(test.IPInt, ipInt)
 	}
+}
+
+func Test_intToip(t *testing.T) {
+	for _, test := range ipIntConversion {
+		assert := assert.New(t)
+		ip := intToIp(test.IPInt)
+		assert.Equal(test.IP, ip)
+	}
+}
+
+func Test_findIPMaxMask(t *testing.T) {
+	tests := []struct {
+		IP      net.IP
+		Netbits int
+	}{
+		{
+			IP:      net.ParseIP("10.160.0.0").To4(), // ff b0 00 00
+			Netbits: 11,
+		},
+		{
+			IP:      net.ParseIP("10.160.80.1").To4(), // ff b0 50 01
+			Netbits: 32,
+		},
+		{
+			IP:      net.ParseIP("0.0.0.0").To4(), // ff b0 50 01
+			Netbits: 0,
+		},
+		{
+			IP:      net.ParseIP("192.168.0.0").To4(), // c0 a8 00 00
+			Netbits: 13,
+		},
+	}
+	for _, test := range tests {
+		assert := assert.New(t)
+		netbits := findIPMaxMask(test.IP)
+		assert.Equal(test.Netbits, netbits)
+	}
+
 }
 
 func Test_FindSubnetwork(t *testing.T) {
@@ -53,6 +91,12 @@ func Test_FindSubnetwork(t *testing.T) {
 			Hosts:     4194304 + 2097152,
 			SubNet:    &net.IPNet{IP: net.ParseIP("10.128.0.0").To4(), Mask: net.CIDRMask(10, IPv4maskSize)},
 			LeftHosts: 2097152,
+		},
+		{
+			Begin:     net.ParseIP("10.160.0.0").To4(),
+			Hosts:     4194304,
+			SubNet:    &net.IPNet{IP: net.ParseIP("10.160.0.0").To4(), Mask: net.CIDRMask(11, IPv4maskSize)},
+			LeftHosts: 4194304 / 2,
 		},
 	}
 
@@ -99,7 +143,8 @@ func Test_FindAvailableSubnetworks(t *testing.T) {
 				&net.IPNet{IP: net.ParseIP("172.31.0.0").To4(), Mask: net.CIDRMask(16, IPv4maskSize)},
 			},
 			AvailableSubNets: Subnetworks{
-				&net.IPNet{IP: net.ParseIP("10.64.0.0").To4(), Mask: net.CIDRMask(9, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.64.0.0").To4(), Mask: net.CIDRMask(10, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.128.0.0").To4(), Mask: net.CIDRMask(10, IPv4maskSize)},
 			},
 			Err: nil,
 		},
@@ -143,6 +188,30 @@ func Test_FindAvailableSubnetworks(t *testing.T) {
 				&net.IPNet{IP: net.ParseIP("10.224.0.0").To4(), Mask: net.CIDRMask(12, IPv4maskSize)},
 				&net.IPNet{IP: net.ParseIP("10.240.0.0").To4(), Mask: net.CIDRMask(13, IPv4maskSize)},
 				&net.IPNet{IP: net.ParseIP("10.254.0.0").To4(), Mask: net.CIDRMask(16, IPv4maskSize)},
+			},
+			Err: nil,
+		},
+		{
+			Description: "Multiple available subnetworks in sequence",
+			Network:     &net.IPNet{IP: net.ParseIP("10.0.0.0").To4(), Mask: net.CIDRMask(8, IPv4maskSize)},
+			SubNets: Subnetworks{
+				&net.IPNet{IP: net.ParseIP("10.0.0.0").To4(), Mask: net.CIDRMask(10, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.96.0.0").To4(), Mask: net.CIDRMask(12, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.128.0.0").To4(), Mask: net.CIDRMask(13, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.144.0.0").To4(), Mask: net.CIDRMask(12, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.224.0.0").To4(), Mask: net.CIDRMask(12, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.240.0.0").To4(), Mask: net.CIDRMask(13, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.254.0.0").To4(), Mask: net.CIDRMask(16, IPv4maskSize)},
+			},
+			AvailableSubNets: Subnetworks{
+				&net.IPNet{IP: net.ParseIP("10.64.0.0").To4(), Mask: net.CIDRMask(11, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.112.0.0").To4(), Mask: net.CIDRMask(12, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.136.0.0").To4(), Mask: net.CIDRMask(13, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.160.0.0").To4(), Mask: net.CIDRMask(11, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.192.0.0").To4(), Mask: net.CIDRMask(11, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.248.0.0").To4(), Mask: net.CIDRMask(14, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.252.0.0").To4(), Mask: net.CIDRMask(15, IPv4maskSize)},
+				&net.IPNet{IP: net.ParseIP("10.255.0.0").To4(), Mask: net.CIDRMask(16, IPv4maskSize)},
 			},
 			Err: nil,
 		},
